@@ -153,8 +153,6 @@ UnionFS，最主要的功能是将多个不同位置的目录联合挂载（unio
 
 在Ubuntu中，UnionFS默认使用aufs。
 
-![镜像分层](/Users/nieguanglin/pics/CNCF/docker/镜像分层.png)
-
 <img src="https://github.com/NieGuanglin/docs/blob/main/pics/CNCF/docker/%E9%95%9C%E5%83%8F%E5%88%86%E5%B1%82.png">
 
 - 只读层，ro+wh，readonly+whiteout：
