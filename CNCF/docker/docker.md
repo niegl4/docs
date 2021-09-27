@@ -155,7 +155,7 @@ UnionFS，最主要的功能是将多个不同位置的目录联合挂载（unio
 
 <img src="https://github.com/NieGuanglin/docs/blob/main/pics/CNCF/docker/%E9%95%9C%E5%83%8F%E5%88%86%E5%B1%82.png">
 
-<img src="/Users/nieguanglin/docs/pics/CNCF/docker/镜像分层.png" alt="1虚拟内存总览.png" style="zoom:100%;" />
+<img src="/Users/nieguanglin/docs/pics/CNCF/docker/镜像分层.png" alt="镜像分层.png" style="zoom:100%;" />
 
 - 只读层，ro+wh，readonly+whiteout：
 
