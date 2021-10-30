@@ -159,6 +159,10 @@ k表示：把数据规模分解到1时的分解次数，故当算法完成，数
 
 ### 算法要点
 
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/data-structure/sort/快速排序-分区函数演示.png">
+
+<img src="/Users/nieguanglin/docs/pics/data-structure/sort/快速排序-分区函数演示.png" alt="快速排序-分区函数演示" style="zoom:100%;" />
+
 边切分，边确保大致有序（左边小于中间元素，右边大于中间元素）。
 
 最后从最小的单位逐级返回，每次返回都是有序的。
