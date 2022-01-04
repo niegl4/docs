@@ -290,6 +290,52 @@ update 表名 set 字段1=值1,字段2=值2... where 条件;
 
    (select min(b.c_class_id) from (select * from t_student where c_age=(select max(c_age) from t_student where c_gender="女")) as b);
 
+   ```sql
+   select 
+   	* 
+   from 
+   	(
+   		select 
+   			* 
+   		from 
+   			t_student 
+   		where 
+   			c_age=
+   				(
+   					select 
+   						max(c_age) 
+   					from 
+   						t_student 
+   					where 
+   						c_gender="女"
+   				)
+   	) as a 
+   where 
+   	a.c_class_id=
+   		(
+   			select 
+   				min(b.c_class_id) 
+   			from 
+   				(
+   					select 
+   						* 
+   					from 
+   						t_student 
+   					where c_age=
+   						(
+   							select 
+   								max(c_age) 
+   							from 
+   								t_student 
+   							where 
+   								c_gender="女"
+   						)
+   				) as b
+   		);
+   ```
+
+   
+
 9. select 的附加之 where后面加order by 字段 asc/desc
 
    <u>附加</u>
@@ -304,7 +350,7 @@ update 表名 set 字段1=值1,字段2=值2... where 条件;
 
 10. select的附加之 where后面加limit 分页查询
 
-    <u>附件</u>
+    <u>附加</u>
 
     select * from 表名 where 条件 limit 起始行索引(不等于id),显示行数;
 
