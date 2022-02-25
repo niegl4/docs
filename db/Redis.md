@@ -50,6 +50,8 @@
 
 ### AOF
 
+Append Only File
+
 
 
 ### RDB
