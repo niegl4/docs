@@ -1,5 +1,11 @@
 [TOC]
 
+# 总览
+
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/db/redis/1.redis-全局脉络.png">
+
+<img src="/Users/nieguanglin/docs/pics/db/redis/1.redis-全局脉络.png" alt="1.redis-全局脉络.png" style="zoom:100%;" />
+
 # 应用维度
 
 ## 缓存应用
@@ -36,12 +42,15 @@
 
 **LRU**
 
-Least Recently Used，按照最近最少使用的原则来筛选数据，最不常用的数据会被筛选出来，而最近频繁使用的数据会留在缓存中。
+Least Recently Used（最近最少使用），最不常用的数据会被筛选出来，而最近频繁使用的数据会留在缓存中。
 
 **LFU**
 
-在LRU 算法的基础上，同时考虑了数据的访问时效性和数据的访问次数，可以看作是对淘汰策略的优化。
+Least Frequently Used，在筛选数据时，**首先会筛选并淘汰访问次数少的数据**，然后针对访问次数相同的数据，再**筛选并淘汰访问时间最久远的数据**。
 
+- 为了避开 8bit 最大只能记录 255 的限制，LFU 策略设计使用非线性增长的计数器来表示数据的访问次数。
+
+- 在一些场景下，有些数据在短时间内被大量访问后就不会再被访问了。那么再按照访问次数来筛选的话，这些数据会被留存在缓存中，但不会提升缓存命中率。为此，Redis 在实现 LFU 策略时，还设计了一个 counter 值的衰减机制。
 
 
 
