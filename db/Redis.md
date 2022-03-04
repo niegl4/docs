@@ -141,6 +141,10 @@ Redis 是单线程，主要是指 Redis 的**网络 IO 和键值对读写**是�
 
 值的数据类型和底层数据结构的对应。
 
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/db/redis/2.redis-value数据类型与底层实现类型.png">
+
+<img src="/Users/nieguanglin/docs/pics/db/redis/2.redis-value数据类型与底层实现类型.png" alt="2.redis-value数据类型与底层实现类型.png" style="zoom:100%;" />
+
 - 压缩列表
 
   压缩列表实际上类似于一个数组，数组中的每一个元素都对应保存一个数据。和数组不同的是，压缩列表在表头有三个字段 zlbytes、zltail 和 zllen，分别表示列表长度、列表尾的偏移量和列表中的 entry 个数；压缩列表在表尾还有一个 zlend，表示列表结束。
