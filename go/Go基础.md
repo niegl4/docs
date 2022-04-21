@@ -592,91 +592,101 @@ func main() {
 
 ```go
 type targetData struct {
-    data string
-    Err error
+	data string
+	Err  error
 }
 
 //这里模拟的是一个耗时任务，实际项目中，可能是一次http请求
-func task(arg1 int, resChan chan *targetData) {
-    if arg1 < 4 {
-        resChan <- &targetData{data: "a"}
-    } esle {
-        resChan <- &targetData{Err: errors.New("error")}
-    }
-    return
+func task(arg1 int, taskChan chan *targetData) {
+	if arg1 < 4 {
+		taskChan <- &targetData{data: "a"}
+	} else {
+		taskChan <- &targetData{Err: errors.New("error")}
+	}
+	return
 }
 
-func callTask(arg1 int, resChan chan *targetData, ctx context.Context, 
-              wg *sync.WaitGroup) {
-    //为了形成select多路复用，必须多创建一个本地通道
-    localChan := make(chan *targetData, 0)
-    //为了能够及时获取上层的cancel信息，必须形成select多路复用的模型，所以必须异步调用子任务
-    go task(arg1, localChan)
-    select {
-        //最多四种情况：
-        //1.无cancel,无结果
-        //select阻塞
-        //2.有cancel，无结果
-        //此时本次任务产生的结果已经没有意义了，及时结束本次任务
-        //3.无cancel，有结果
-        //本次任务的结果要发送给调用者
-        //4.同时有cancel，有结果
-        //select会随机选择一个分支执行
-        //本次任务的结果同样没有意义，无论是发送还是丢弃，都可以
-    case res := <-localChan:
-        //如果选择发送结果，无论本次结果是否还有意义，都可以发送，上层负责接收所有任务的结果
-        resChan <- res
-    case <- ctx.Done():
-        //如果上层cancel，本次的结果丢弃，但不能不管已经启动的任务，异步从本地通道获取一次结果，让任务结束
-        go func() {
-            <- localChan
-        }()
-    }
-    wg.Done()
-    return
+//耗时任务垫片，为了能及时结束进行中的耗时任务，要在shim中实现select机制
+func taskShim(ctx context.Context, arg1 int, resChan chan *targetData,
+	wg *sync.WaitGroup) {
+	//为了形成select多路复用，必须多创建一个本地通道
+	taskChan := make(chan *targetData, 0)
+	//为了能够及时获取上层的cancel信息，必须形成select多路复用的模型，所以必须异步调用子任务
+	go task(arg1, taskChan)
+	select {
+	//最多四种情况：
+	//1.无cancel,无结果
+	//select阻塞
+	//2.有cancel，无结果
+	//此时本次任务产生的结果已经没有意义了，及时结束本次任务
+	//3.无cancel，有结果
+	//本次任务的结果要发送给调用者
+	//4.同时有cancel，有结果
+	//select会随机选择一个分支执行
+	//本次任务的结果同样没有意义，无论是发送还是丢弃，都可以
+	case res := <-taskChan:
+		//如果选择发送结果，无论本次结果是否还有意义，都可以发送，上层负责接收所有任务的结果
+		resChan <- res
+	case <-ctx.Done():
+		//如果上层cancel，本次的结果丢弃，但不能不管已经启动的任务，异步从本地通道获取一次结果，让任务结束
+		go func() {
+			<-taskChan
+		}()
+	}
+	wg.Done()
+	return
 }
 
 func main() {
-    ctx, cancel := context.WithCancel(context.Background())
-    resChan := make(chan *targetData, 0)
-    var wg sync.WaitGroup
-    
-    for i := 0; i < 10; i++ {
-        wg.Add(1)
-        go calltask(i, resChan, ctx, &wg)
-    }
-    
-    var result *targetData
-    for i := 0; i < 10; i++ {
-        res := <- resChan
-        if res.Err != nil {
-            continue
-        }
-        //所有的结果都不满足要求，那么不会修改result
-        //任一子任务的结果满足要求，修改result，通知其余任务及时结束
-        if res.data == "4" {
-            result = res
-            cancel()
-            break
-        }
-    }
-    //主线任务不能不管正在进行中的任务，要能够让他们正常结束
-    //如果结果全都不满足要求，也就是上面已经取出所有子任务的结果时，这个匿名函数没有什么用处
-    //如果结果有满足要求的，cancel通知时他们的任务也刚好结束（也就是出现情况四），匿名函数负责让select随机选择了发送结果分支的情况能够善终
-    go func() {
-        for {
-            _, ok := <- resChan
-            //通道被关闭，ok为false，那么这个善后的匿名函数，也就可以结束了
-            if !ok {
-                break
-            }
-        }
-    }
-    //到达这里，子任务仍然可能正在运行（当然，由于cancel，它们很快就会结束，而不是必须等待耗时调用完成）,所以需要等待
-    wg.Wait()
-    //所有子任务已经结束，关闭通道，让善后匿名函数结束它本身
-    close(resChan)
-    return
+	ctx, cancel := context.WithCancel(context.Background())
+	resChan := make(chan *targetData, 0)
+	var wg sync.WaitGroup
+
+	//一，通过shim拉起多task
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go taskShim(ctx, i, resChan,  &wg)
+	}
+
+	//二，通过resChan获取tasks的结果
+	var result *targetData
+	for i := 0; i < 10; i++ {
+		res := <-resChan
+		if res.Err != nil {
+			continue
+		}
+		//所有的结果都不满足要求，那么不会修改result
+		//任一子任务的结果满足要求，修改result，通知其余任务及时结束
+		if res.data == "4" {
+			result = res
+			cancel()
+			break
+		}
+	}
+	fmt.Println(result)
+
+	//三，释放相关资源。ctx，goroutine，chan
+	//1.所有的结果都不满足要求,cancel函数释放ctx的资源
+	if result == nil {
+		cancel()
+	}
+	//2.主线任务不能不管正在进行中的任务，要能够让他们正常结束
+	//如果结果全都不满足要求，也就是上面已经取出所有子任务的结果时，这个匿名函数没有什么用处
+	//如果结果有满足要求的，cancel通知时他们的任务也刚好结束（也就是出现情况四），匿名函数负责让select随机选择了发送结果分支的情况能够善终
+	go func() {
+		for {
+			_, ok := <-resChan
+			//通道被关闭，ok为false，那么这个善后的匿名函数，也就可以结束了
+			if !ok {
+				break
+			}
+		}
+	}()
+	//到达这里，子任务仍然可能正在运行（当然，由于cancel，它们很快就会结束，而不是必须等待耗时调用完成）,所以需要等待
+	wg.Wait()
+	//3.所有子任务已经结束，关闭通道，让善后匿名函数结束它本身
+	close(resChan)
+	return
 }
 ```
 
@@ -694,113 +704,117 @@ func main() {
 
 ```go
 type result struct {
-    planAResult string
-    planBResult string
-    err			error
+	planAResult string
+	planBResult string
+	err			error
 }
 
-func planA(err error, resChan chan *result, wg *sync.WaitGroup) {
-    //defer wg.Done()
-    res ：= &result{}
-    if err != nil {
-        res.err = err
-    } else {
-        res.planAResult = "A result" 
-    }
-    resChan <- res
+func planA(err error, taskChan chan *result, wg *sync.WaitGroup) {
+	//defer wg.Done()
+	res := &result{}
+	if err != nil {
+		res.err = err
+	} else {
+		res.planAResult = "A result"
+	}
+	taskChan <- res
 }
 
-func planB(err error, resChan chan *result, ctx context.Context, wg *sync.WaitGroup) {
-    //defer wg.Done()
-    resChanLocal := make(chan *result)
-    getPlanB := func() {
-        time.Sleep(5 * time.Second)
-        res := &result{}
-        if err != nil {
-            res.err = err
-        } else {
-            res.planBResult = "B result"
-        }
-        resChanLocal <- res
-    }
-    go getPlanB()
-    
-    select {
-    case <-ctx.Done():
-        log.Println("B was canceled")
-        //模型四与模型三最大的不同，就在于这里。无论是自己运算出结果，还是被cancel，都要向结果通道传值，保证行为一致。这样便于上层调用函数，处理本子任务的善后工作。
-        resChan <- &result{}
-        go func() {
-            <-resChanLocal
-            log.Println("B ended by cancel")
-        }()
-    case res := <-resChanLocal:
-        log.Println("B ended by normal")
-        resChan <- res
-    }
+func planB(err error, taskChan chan *result) {
+	time.Sleep(5 * time.Second)
+	res := &result{}
+	if err != nil {
+		res.err = err
+	} else {
+		res.planBResult = "B result"
+	}
+	taskChan <- res
+}
+
+func planBShim(err error, resChan chan *result, ctx context.Context, wg *sync.WaitGroup) {
+	//defer wg.Done()
+	taskChan := make(chan *result)
+	go planB(err, taskChan)
+
+	select {
+	case <-ctx.Done():
+		log.Println("B was canceled")
+		//模型四与模型三最大的不同，就在于这里。无论是自己运算出结果，还是被cancel，都要向结果通道传值，保证行为一致。这样便于上层调用函数，处理本子任务的善后工作。
+		resChan <- &result{}
+		go func() {
+			<-taskChan
+			log.Println("B ended by cancel")
+		}()
+	case res := <-taskChan:
+		log.Println("B ended by normal")
+		resChan <- res
+	}
 }
 
 func genTask() (interface{}, error) {
-    //这里即使子任务的结果是同一类型，也强烈建议创建多个结果通道。有几种方案，就创建几个通道。方便后面进行逻辑判断。
-    resChan1 := make(chan *result)
-    resChan2 := make(chan *result)
-    ctx, cancel := context.WithCancel(context.Background())
-    var wg sync.WaitGroup
-    
-    //wg.Add(2)
-    // 1. a right, b right
-    go planA(nil, resChan1, &wg)
-    go planB(nil, resChan2, ctx, &wg)
-    
-    // 2. a right, b wrong
-    //go planA(nil, resChan1, &wg)
-    //go planB(errors.New("B is set wrong"), bResChan, ctx, &wg)
-    
-    // 3. a wrong, b right
-    //go planA(errors.New("A is set wrong"), resChan1, &wg)
-    //go planB(nil, bResChan, ctx, &wg)
-    
-    // 4. a wrong, b wrong
-    //go planA(errors.New("A is set wrong"), resChan1, &wg)
-    //go planB(errors.New("B is set wrong"), bResChan, ctx, &wg)
-    
-    aRes := <-resChan1
-    if aRes.err == nil {
-        log.Println("we get planA result, finish the task")
-        cancel()
-        //方案A有结果且不报错，需要对方案B做善后工作。固定地从通道2中取一次结果。
-        //cancel时，方案B既有可能select cancel，也有可能select发送结果。所以它们的行为要一致，方便我这里统一处理善后。
-        go func() {
-            <-resChan2  
-        }()
-        
-        //只有在需要关闭通道时，才需要wg变量。它的作用就是通知调用者，不再使用通道了。但其实，通道不关闭也是可以的。
-        //wg.Wait()
-        //close(resChan1)
-        //close(resChan2)
-        return aRes, nil
-    }
-    
-    log.Println("planA wrong. wait for planB")
-    bRes := <-resChan2
-    if bRes.err == nil {
-        //wg.Wait()
-        //close(resChan1)
-        //close(resChan2)
-        return bRes, nil
-    }
-    return nil, errors.New(aRes.err.Error() + " " + bRes.err.Error())
+	//这里即使子任务的结果是同一类型，也强烈建议创建多个结果通道。有几种方案，就创建几个通道。方便后面进行逻辑判断。
+	resChan1 := make(chan *result)
+	resChan2 := make(chan *result)
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+
+	//wg.Add(2)
+	// 1. a right, b right
+	go planA(nil, resChan1, &wg)
+	go planBShim(nil, resChan2, ctx, &wg)
+
+	// 2. a right, b wrong
+	//go planA(nil, resChan1, &wg)
+	//go planBShim(errors.New("B is set wrong"), resChan2, ctx, &wg)
+
+	// 3. a wrong, b right
+	//go planA(errors.New("A is set wrong"), resChan1, &wg)
+	//go planBShim(nil, resChan2, ctx, &wg)
+
+	// 4. a wrong, b wrong
+	//go planA(errors.New("A is set wrong"), resChan1, &wg)
+	//go planBShim(errors.New("B is set wrong"), resChan2, ctx, &wg)
+
+	aRes := <-resChan1
+	if aRes.err == nil {
+		log.Println("we get planA result, finish the task")
+		cancel()
+		//方案A有结果且不报错，需要对方案B做善后工作。固定地从通道2中取一次结果。
+		//cancel时，方案B既有可能select cancel，也有可能select发送结果。所以它们的行为要一致，方便这里统一处理善后。
+		go func() {
+			<-resChan2
+		}()
+
+		//只有在需要关闭通道时，才需要wg变量。它的作用就是通知调用者，不再使用通道了。但其实，通道不关闭也是可以的。
+		//wg.Wait()
+		//close(resChan1)
+		//close(resChan2)
+		return aRes, nil
+	}
+
+	log.Println("planA wrong. wait for planB")
+	bRes := <-resChan2
+	//释放ctx资源
+	cancel()
+	if bRes.err == nil {
+		//wg.Wait()
+		//close(resChan1)
+		//close(resChan2)
+		return bRes, nil
+	}
+	return nil, errors.New(aRes.err.Error() + " " + bRes.err.Error())
 }
 
 func main() {
-    _, err := genTask()
-    if err != nil {
-        log.Println(err)
-    }
-    log.Println("genTask end")
-    time.Sleep(20 * time.Second)
-    log.Println("all tasks end.")
+	_, err := genTask()
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("genTask end")
+	time.Sleep(20 * time.Second)
+	log.Println("all tasks end.")
 }
+
 ```
 
 
