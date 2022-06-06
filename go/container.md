@@ -1,10 +1,12 @@
 [TOC]
 
-## List
+# List
 
-### 结构
+## 结构
 
-![go-container.list的实现](/Users/nieguanglin/pics/go/go-container.list的实现.png)
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/go/go-container.list的实现.png">
+
+<img src="/Users/nieguanglin/docs/pics/go/go-container.list的实现.png" alt="go-container.list的实现.png" style="zoom:100%;" />
 
 List在内部就是一个循环链表，它的root永远不会持有任何实际的元素值，而该元素的存在就是为了连接这个循环链表的首尾两端。
 
@@ -22,7 +24,7 @@ type Element struct {
 }
 ```
 
-### 延迟初始化
+## 延迟初始化
 
 Go标准库中很多结构体类型的程序实体都做到了开箱即用，链表List就是其中之一。var l list.List声明的链表l可以直接使用，关键就在于它的延迟初始化机制。
 
@@ -31,7 +33,7 @@ Go标准库中很多结构体类型的程序实体都做到了开箱即用，链
 - 优点：在于延后，它可以分散初始化操作带来的计算量和存储空间消耗。计算量和存储空间的压力可以被分散到实际使用它们的时候，实际使用的时间越分散，延迟初始化带来的优势就会越明显。
 - 缺点：也在于延后，在使用对象的时候，如果每个方法都需要判断它是否已经被初始化，这也会是计算力的浪费。当方法被频繁调用的时候，这种浪费的影响就开始显现了。
 
-### List平衡延迟初始化的优点和缺点
+## List平衡延迟初始化的优点和缺点
 
 当移动链表中的Element时，如果我们自己生成一个Element并传给诸如func (l *List) MoveToFront(e *Element)等方法，这些方法不会对链表做出任何改动。因为Element的list字段私有，我们无法获取，或者说我们自己生成的Element不在链表中，谈不上移动元素。
 
@@ -70,17 +72,19 @@ Go标准库中很多结构体类型的程序实体都做到了开箱即用，链
 
 指针相等是链表已经初始化的充要条件。List和Element在结构上的特点，巧妙地平衡了延迟初始化的优缺点，既使链表可以开箱即用，又在性能上可以达到最优。
 
-## Ring
+# Ring
 
-### 结构
+## 结构
 
 Ring的结构相对简单，就是一个首尾相连的双向链表。一个Ring类型的值只代表了其所属循环链表中的一个元素，而一个List类型的值代表了一个完整的链表。
 
-### 巧妙的抽象
+## 巧妙的抽象
 
 两个Ring的link操作，可以用下图表示。
 
-![go-container.ring的link实现](/Users/nieguanglin/pics/go/go-container.ring的link实现.png)
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/go/go-container.ring的link实现.png">
+
+<img src="/Users/nieguanglin/docs/pics/go/go-container.ring的link实现.png" alt="go-container.ring的link实现.png" style="zoom:100%;" />
 
 ```go
 func (r *Ring) Link(s *Ring) *Ring {
@@ -100,7 +104,9 @@ func (r *Ring) Link(s *Ring) *Ring {
 
 而把一个Ring的UnLink操作，源码的作者把它抽象为：与Link是本质上相同的问题。这种巧妙的抽象，很大程度上减少了代码量。
 
-![go-container.ring的unlink实现](/Users/nieguanglin/pics/go/go-container.ring的unlink实现.png)
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/go/go-container.ring的unlink实现.png">
+
+<img src="/Users/nieguanglin/docs/pics/go/go-container.ring的unlink实现.png" alt="go-container.ring的unlink实现.png" style="zoom:100%;" />
 
 ```go
 func (r *Ring) Unlink(n int) *Ring {

@@ -1,8 +1,8 @@
 [TOC]
 
-## net.Dial
+# net.Dial
 
-### Timeout字段
+## Timeout字段
 
 ```go
 type Dialer struct {
@@ -31,7 +31,7 @@ type Dialer struct {
 
 在解析address的值的时候，函数会确定网络服务的IP地址，端口号等必要信息，并在需要时访问DNS服务。如果解析出的IP地址有多个，那么函数会串行或并发地尝试建立连接。无论用什么方式尝试，以最先建立成功的那个连接为准。它还会根据超时前的剩余时间，去设定针对每次连接尝试的超时时间，以便让它们都有适当的时间执行。
 
-### KeepAlive字段
+## KeepAlive字段
 
 ```go
 type Dialer struct {
@@ -52,9 +52,9 @@ type Dialer struct {
 
 
 
-## http.Client
+# http.Client
 
-### Timeout字段
+## Timeout字段
 
 ```go
 type Client struct {
@@ -80,7 +80,7 @@ type Client struct {
 
 它表示单次http事务的超时时间。零值表示不设置超时时间。
 
-### Transport字段
+## Transport字段
 
 ```go
 type Client struct {

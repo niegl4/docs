@@ -937,7 +937,9 @@ func main() {
 
      > 既然能够将interface{}类型的变量转换成反射对象，那么一定需要其他方法将反射对象还原成interface{}类型的变量。reflect包中的reflect.Value.Interface()方法就能完成这项工作。不过这个方法只能获取interface{}类型的变量，如果想要将其还原成最原始的状态，还需要进行显示类型推断。
 
-     ![go-basic基本类型与反射类型的转换](/Users/nieguanglin/pics/go/go-basic基本类型与反射类型的转换.png)
+     <img src="https://github.com/NieGuanglin/docs/blob/main/pics/go/go-basic基本类型与反射类型的转换.png">
+
+     <img src="/Users/nieguanglin/docs/pics/go/go-basic基本类型与反射类型的转换.png" alt="go-basic基本类型与反射类型的转换.png" style="zoom:100%;" />
 
      当然不是所有的基本类型变量都需要隐式类型转换这一过程。如果变量本身就是interface{}类型，那么它就不需要类型转换。因为类型转换这一过程一般都是隐式的，所以不用太关心它。
 
