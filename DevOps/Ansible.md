@@ -6,7 +6,7 @@
 
 ## 关键字段
 
-playbook使用yaml来编排一套play，每个play调用ansible标准模块或自定义模块。这样组合起来，整体实现一定的功能。
+**playbook使用yaml来编排一套play，每个play调用ansible标准模块或自定义模块。这样组合起来，整体实现一定的功能。**
 
 ### Hosts
 
@@ -63,7 +63,7 @@ Notify对应的Handler可用于在每个play的最后被触发，这样可以避
 
 给特定的task指定tag，执行playbook时，可以只执行特定tag的task，而不是整个playbook。
 
-```
+```yml
 - hosts: a
   remote_user: root
   gather_facts: no 

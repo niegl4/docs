@@ -56,8 +56,12 @@ Weave Cloud基于Google的四个黄金指标，结合Prometheus以及Kubernetes�
 
 ## whiteBox，blackBox
 
-- whiteBox，被监控对象是自省的，即能够自己生成监控指标。
-- blackBox，对被监控对象无侵入性，即基于探针的监控方式。
+- whiteBox，**通过白盒能够了解其内部的实际运行状态，通过对监控指标的观察能够预判可能出现的问题，**从而对潜在的不确定因素进行优化。
+- blackBox，黑盒监控即**以用户的身份测试服务的外部可见性**，常见的黑盒监控包括 HTTP探针、 TCP探针 等用于检测站点或者服务的可访问性，以及访问效率等。
+
+黑盒监控相较于白盒监控最大的不同在于：黑盒监控是以故障为导向，当故障发生时，黑盒监控能快速发现故障。而白盒监控则侧重于主动发现或者预测潜在的问题。
+
+一个完善的监控目标是要能够从白盒的角度发现潜在问题，能够在黑盒的角度快速发现已经发生的问题。
 
 
 
@@ -69,7 +73,9 @@ Prometheus不仅仅是一款时序数据库（TSDB），更是一款设计用于
 
 prometheus只负责时序型指标数据的采集和存储。数据的分析聚合，可视化，告警等功能由其他组件完成。
 
-![prometheus架构](/Users/nieguanglin/pics/CNCF/prometheus/1prom-架构.png)
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/CNCF/prometheus/1prom-架构.png">
+
+<img src="/Users/nieguanglin/docs/pics/CNCF/prometheus/1prom-架构.png" alt="1prom-架构.png" style="zoom:100%;" />
 
 - Prometheus Server
 
@@ -82,6 +88,8 @@ prometheus只负责时序型指标数据的采集和存储。数据的分析聚�
 - Exporters
 
 对于不支持Instrumentation的app，用于暴露现有app的指标给Prometheus Server。
+
+Instrumentation是指app内部本身就有支持prom的数据格式。
 
 - AlterManager
 
@@ -99,11 +107,11 @@ prometheus只负责时序型指标数据的采集和存储。数据的分析聚�
 
 ## job与instance
 
-能够接收Prometheus Server进行scrape操作的每个端点，即为一个instance。
-
-能让prom找到instance的入口，即为target。
+能够接收Prometheus Server进行scrape操作的每个端点(endpoint)，即为一个instance。
 
 具有类似功能的instance的集合，即为一个job。
+
+（能让prom找到instance的入口，即为target。比如：被监控主机ip+port就是一个target。或者服务发现target可以发现多个instance。）
 
 
 
@@ -151,13 +159,19 @@ scrape_configs:
 
 #### 基于k8s的服务发现
 
-k8s的node，service，endpoint，pod和ingress资源分别由各自的发现机制进行定义。负责发现每种类型资源对象的组件，在prom中称为role，与k8s的rbac的role毫无关系。prom使用daemonset部署node-exporter，发现各节点。
+k8s的node，service，endpoint，pod和ingress资源分别由各自的发现机制进行定义。
+
+负责发现每种类型资源对象的组件，在prom中称为role，与k8s的rbac的role毫无关系。
+
+prom使用daemonset部署node-exporter，发现各节点。
 
 在k8s的kube-system下，prom server体现为一个statefulset。
 
 指标的relabel过程：
 
-![2prom-重新打标](/Users/nieguanglin/pics/CNCF/prometheus/2prom-重新打标.png)
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/CNCF/prometheus/2prom-重新打标.png">
+
+<img src="/Users/nieguanglin/docs/pics/CNCF/prometheus/2prom-重新打标.png" alt="2prom-重新打标" style="zoom:100%;" />
 
 指标的重新打标，是为了：
 
@@ -283,11 +297,11 @@ prom自身的指标，可以通过访问prom server的/metrics接口，可以获
 
 在k8s里，还有些指标定义在configMap中，一般通过关键字“rule”可以查到。
 
-### 数据模型（metric type）
+### 指标类型（metric type）
 
 仅以**键值**形式存储**时序型**聚合数据。键会使用**标签**作为元数据，标签可以用于过滤数据。值即为双精度浮点型。
 
-prom基于指标名称（metrics），以及附属的标签集（labelset），来唯一定义一条时间序列（series）。
+prom基于指标名称（metric），以及附属的标签集（labelset），来唯一定义一条时间序列（series）。
 
 #### Counter
 
@@ -313,7 +327,9 @@ counter的总数通常没什么用，需要借助rate，topk，increase，irate�
 
 #### Histogram
 
-直方图。在一段时间范围内对数据进行采样，并将其计入bucket中。存储样本值在各个bucket中的数量，所有样本值之和，总的样本数量等信息。它可以分析，因为异常值而引起的平均值不准的问题。它不直接保存分位数，而是使用histogram_quantile函数计算分位数（即，某个bucket的样本数在所有样本数中占据的比例）。
+直方图。**在一段时间范围内对数据进行采样，并将其计入bucket中。存储样本值在各个bucket中的数量，**所有样本值之和，总的样本数量等信息。
+
+它**可以分析，因为异常值而引起的平均值不准的问题**。它不直接保存分位数，而是使用histogram_quantile函数计算分位数（即，某个bucket的样本数在所有样本数中占据的比例）。
 
 注意，取值间隔的划分采用的是累积区间间隔机制。每个bucket的样本，都包含了前面所有bucket中的样本。
 
@@ -338,8 +354,8 @@ Prometheus内置的查询语句，并内置了用于数据处理的函数。
 
 表达式的返回值，有4种数据类型
 
-- instance vector，特定时间序列集合上，具有相同时间戳的一组样本值。
-- range vector，特定时间序列集合上，在指定的同一段时间内，所有的样本值。
+- **instance vector**，特定时间序列集合上，具有**相同时间戳**的一组样本值。
+- **range vector**，特定时间序列集合上，在指定的**同一段时间内**，所有的样本值。
 - scalar，一个浮点型数据值。
 - string，使用单引号，双引号，反引号引用。反引号不会对转义字符转义。
 
@@ -354,7 +370,7 @@ Prometheus内置的查询语句，并内置了用于数据处理的函数。
 
 - 特别的，使用\__name__作为标签名称，还能够对指标名称进行过滤。
 
-- 范围向量选择器与即时向量选择器相比，它需要在表达式后紧跟一个[]，表达时间范围。
+- 范围向量选择器与即时向量选择器相比，唯一区别是：它需要在表达式后紧跟一个[]，表达时间范围。
 
 - 默认情况下，即时向量选择器和范围向量选择器都以当前时间为基准时间点，而offset关键字可以修改该基准。
 
@@ -516,10 +532,14 @@ Query本身可以水平扩展，因而可以实现高可用部署。并且，它
 
 使用sidecar容器代理查询接口，并上传数据。不使用receiver组件。
 
-![3prom-thanos-sidecar-架构](/Users/nieguanglin/pics/CNCF/prometheus/3prom-thanos-sidecar-架构.png)
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/CNCF/prometheus/3prom-thanos-sidecar-架构.png">
+
+<img src="/Users/nieguanglin/docs/pics/CNCF/prometheus/3prom-thanos-sidecar-架构.png" alt="3prom-thanos-sidecar-架构" style="zoom:100%;" />
 
 ### Receive模式
 
 prom server远程写入到receiver，receiver代理查询接口，并上传数据。不使用sidecar组件。
 
-![4prom-thanos-receive-架构](/Users/nieguanglin/pics/CNCF/prometheus/4prom-thanos-receive-架构.png)
+<img src="https://github.com/NieGuanglin/docs/blob/main/pics/CNCF/prometheus/4prom-thanos-receive-架构.png">
+
+<img src="/Users/nieguanglin/docs/pics/CNCF/prometheus/4prom-thanos-receive-架构.png" alt="3prom-thanos-receive-架构" style="zoom:100%;" />
