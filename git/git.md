@@ -123,7 +123,7 @@ git config --global user.email yyy@y.cm
 
 把add添加到暂存区的**文件**，撤销到工作区。
 
-### git checkout --\<file>
+### git checkout -- \<file>
 
 把add添加到暂存区的**文件内容**，撤销到工作区。
 
