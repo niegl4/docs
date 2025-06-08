@@ -137,19 +137,23 @@ git config --global user.email yyy@y.cm
 
 ### git reset
 
-把commit到本地仓库的内容，撤销到暂存区，最常用的--hard选项支持：同时修改暂存区和工作区。
+#### --hard
+
+git reset 会移动 HEAD 指针到指定的提交，并且会彻底地重置暂存区和工作目录中的文件，将它们恢复到指定提交的状态。
 
 与git commit互逆。
 
-#### git reset --hard 哈希值
+- git reset --hard 哈希值
+- git reset --hard HEAD~n
+- git reset --hard HEAD若干个^
 
-最推荐使用这个。
+#### --mixed
 
-#### git reset --hard HEAD~n
+默认模式，git reset会移动HEAD指针到指定的提交，并且会取消暂存区的更改，但不会更改工作目录中的文件。
 
-#### git reset --hard HEAD若干个^
+#### --soft
 
-只能后退。
+git reset会移动HEAD指针到指定的提交，但不会更改暂存区或工作目录中的文件。
 
 
 
